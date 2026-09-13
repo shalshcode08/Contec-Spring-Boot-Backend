@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: contec-pms
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/contec_pms?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    open-in-view: false
+    # Flyway owns the schema; Hibernate only checks that the entities match it.
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  jackson:
+    default-property-inclusion: non_null
+
+app:
+  jwt:
+    # Override in any real deployment: export APP_JWT_SECRET=...
+    secret: ${APP_JWT_SECRET:2f4a7d1c9b83e605af21cd7e4b90613857face24d0b7c391e8a56d2f04b7c918}
+    expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:60}
+    issuer: contec-pms
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.contec.pms: INFO
+
+---
+# Demo profile: adds a repeatable migration with sample users, projects and tasks.
+spring:
+  config:
+    activate:
+      on-profile: demo
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo
