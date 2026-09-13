@@ -4,6 +4,9 @@ Backend module for managing construction projects, tasks and approvals.
 
 Java 17 · Spring Boot 3.3 · Spring Data JPA · Spring Security (JWT) · MySQL · Flyway · JUnit 5 · springdoc OpenAPI
 
+> New here? [**GETTING_STARTED.md**](GETTING_STARTED.md) is a step-by-step guide to installing,
+> running and using the API, with copy-paste commands and a troubleshooting section.
+
 ---
 
 ## Setup
