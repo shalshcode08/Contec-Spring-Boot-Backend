@@ -3,7 +3,6 @@ package com.contec.pms.integration;
 import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.Task;
 import com.contec.pms.domain.entity.User;
-import com.contec.pms.domain.enums.ProjectMemberRole;
 import com.contec.pms.domain.enums.TaskPriority;
 import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.support.AbstractIntegrationTest;
@@ -24,16 +23,15 @@ class OptimisticLockingIT extends AbstractIntegrationTest {
 
     private User manager;
     private User engineer;
-    private Project project;
     private Task task;
 
     @BeforeEach
     void setUpTask() {
         manager = createManager("pm@contec.com");
         engineer = createEngineer("eng@contec.com");
-        project = createProject("Riverside Tower", manager);
-        addMember(project, manager, ProjectMemberRole.MANAGER);
-        addMember(project, engineer, ProjectMemberRole.ENGINEER);
+        Project project = createProject("Riverside Tower", manager);
+        addMember(project, manager);
+        addMember(project, engineer);
         task = createTask(project, manager, engineer, TaskStatus.IN_PROGRESS, 20);
     }
 
@@ -60,22 +58,20 @@ class OptimisticLockingIT extends AbstractIntegrationTest {
 
     @Test
     void staleTaskUpdateIsRejected() throws Exception {
-        UpdateTaskRequest first = new UpdateTaskRequest("Renamed by first writer", "desc",
-                TaskPriority.HIGH, null, task.getVersion());
+        long staleVersion = task.getVersion();
 
         mockMvc.perform(put("/api/tasks/" + task.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearer(manager))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(first)))
+                        .content(json(new UpdateTaskRequest("Renamed by first writer", "desc",
+                                TaskPriority.HIGH, null, staleVersion))))
                 .andExpect(status().isOk());
 
-        UpdateTaskRequest second = new UpdateTaskRequest("Renamed by second writer", "desc",
-                TaskPriority.LOW, null, task.getVersion());
-
         mockMvc.perform(put("/api/tasks/" + task.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearer(manager))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(second)))
+                        .content(json(new UpdateTaskRequest("Renamed by second writer", "desc",
+                                TaskPriority.LOW, null, staleVersion))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("STALE_RESOURCE"));
 
@@ -84,7 +80,7 @@ class OptimisticLockingIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void versionIsExposedAndIncrementsAfterAWrite() throws Exception {
+    void versionIncrementsAfterAWrite() throws Exception {
         long before = task.getVersion();
 
         mockMvc.perform(patch("/api/tasks/" + task.getId() + "/progress")
@@ -93,6 +89,6 @@ class OptimisticLockingIT extends AbstractIntegrationTest {
                         .content(json(new UpdateProgressRequest(45, null, before))))
                 .andExpect(status().isOk());
 
-        assertThat(taskRepository.findById(task.getId()).orElseThrow().getVersion()).isGreaterThan(before);
+        assertThat(versionOf(task.getId())).isGreaterThan(before);
     }
 }

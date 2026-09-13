@@ -3,13 +3,12 @@ package com.contec.pms.integration;
 import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.Task;
 import com.contec.pms.domain.entity.User;
-import com.contec.pms.domain.enums.ProjectMemberRole;
 import com.contec.pms.domain.enums.TaskStatus;
+import com.contec.pms.exception.InvalidStatusTransitionException;
 import com.contec.pms.repository.TaskActivityRepository;
 import com.contec.pms.security.AppUserDetails;
 import com.contec.pms.service.TaskService;
 import com.contec.pms.support.AbstractIntegrationTest;
-import com.contec.pms.web.dto.request.CompleteTaskRequest;
 import com.contec.pms.web.dto.request.RejectTaskRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,16 +31,15 @@ class TransactionRollbackIT extends AbstractIntegrationTest {
 
     private User manager;
     private User engineer;
-    private Project project;
     private Task task;
 
     @BeforeEach
     void setUpTask() {
         manager = createManager("pm@contec.com");
         engineer = createEngineer("eng@contec.com");
-        project = createProject("Riverside Tower", manager);
-        addMember(project, manager, ProjectMemberRole.MANAGER);
-        addMember(project, engineer, ProjectMemberRole.ENGINEER);
+        Project project = createProject("Riverside Tower", manager);
+        addMember(project, manager);
+        addMember(project, engineer);
         task = createTask(project, manager, engineer, TaskStatus.IN_PROGRESS, 40);
     }
 
@@ -51,9 +49,8 @@ class TransactionRollbackIT extends AbstractIntegrationTest {
                 .when(activityRepositorySpy).save(any());
 
         AppUserDetails principal = principalFor(engineer);
-        CompleteTaskRequest request = new CompleteTaskRequest("done", task.getVersion());
 
-        assertThatThrownBy(() -> taskService.complete(principal, task.getId(), request))
+        assertThatThrownBy(() -> taskService.complete(principal, task.getId()))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         Task reloaded = taskRepository.findById(task.getId()).orElseThrow();
@@ -66,10 +63,10 @@ class TransactionRollbackIT extends AbstractIntegrationTest {
     @Test
     void aRejectedBusinessRuleLeavesNoActivityBehind() {
         AppUserDetails principal = principalFor(manager);
-        RejectTaskRequest request = new RejectTaskRequest("not good enough", task.getVersion());
+        RejectTaskRequest request = new RejectTaskRequest("not good enough");
 
         assertThatThrownBy(() -> taskService.reject(principal, task.getId(), request))
-                .isInstanceOf(com.contec.pms.exception.InvalidStatusTransitionException.class);
+                .isInstanceOf(InvalidStatusTransitionException.class);
 
         Task reloaded = taskRepository.findById(task.getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);

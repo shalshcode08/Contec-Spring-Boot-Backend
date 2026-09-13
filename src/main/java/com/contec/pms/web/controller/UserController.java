@@ -1,6 +1,6 @@
 package com.contec.pms.web.controller;
 
-import com.contec.pms.domain.enums.RoleName;
+import com.contec.pms.domain.enums.Role;
 import com.contec.pms.service.UserService;
 import com.contec.pms.web.dto.request.CreateUserRequest;
 import com.contec.pms.web.dto.response.PagedResponse;
@@ -12,6 +12,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/users")
@@ -38,26 +38,23 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a user (administrators only)")
     public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
-        UserResponse created = userService.create(request);
-        return ResponseEntity
-                .created(UriComponentsBuilder.fromPath("/api/users/{id}").build(created.id()))
-                .body(created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(request));
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_MANAGER')")
     @Operation(summary = "List users, optionally filtered by role")
-    public ResponseEntity<PagedResponse<UserResponse>> list(
-            @RequestParam(required = false) RoleName role,
+    public PagedResponse<UserResponse> list(
+            @RequestParam(required = false) Role role,
             @ParameterObject @PageableDefault(size = 20, sort = "fullName", direction = Sort.Direction.ASC)
             Pageable pageable) {
-        return ResponseEntity.ok(userService.list(role, pageable));
+        return userService.list(role, pageable);
     }
 
     @GetMapping("/{userId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_MANAGER')")
     @Operation(summary = "Get a single user")
-    public ResponseEntity<UserResponse> get(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.get(userId));
+    public UserResponse get(@PathVariable Long userId) {
+        return userService.get(userId);
     }
 }

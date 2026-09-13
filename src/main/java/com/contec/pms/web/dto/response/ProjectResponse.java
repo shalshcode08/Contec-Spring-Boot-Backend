@@ -16,8 +16,7 @@ public record ProjectResponse(
         ProjectStatus status,
         UserSummaryResponse createdBy,
         Instant createdAt,
-        Instant updatedAt,
-        Long version) {
+        Instant updatedAt) {
 
     public static ProjectResponse from(Project project) {
         return new ProjectResponse(
@@ -30,7 +29,6 @@ public record ProjectResponse(
                 project.getStatus(),
                 UserSummaryResponse.from(project.getCreatedBy()),
                 project.getCreatedAt(),
-                project.getUpdatedAt(),
-                project.getVersion());
+                project.getUpdatedAt());
     }
 }

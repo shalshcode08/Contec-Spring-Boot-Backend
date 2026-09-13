@@ -1,6 +1,6 @@
 package com.contec.pms.domain.enums;
 
-public enum RoleName {
+public enum Role {
     ADMIN,
     PROJECT_MANAGER,
     SITE_ENGINEER;

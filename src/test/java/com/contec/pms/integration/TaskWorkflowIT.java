@@ -3,11 +3,8 @@ package com.contec.pms.integration;
 import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.Task;
 import com.contec.pms.domain.entity.User;
-import com.contec.pms.domain.enums.ProjectMemberRole;
 import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.support.AbstractIntegrationTest;
-import com.contec.pms.web.dto.request.ApproveTaskRequest;
-import com.contec.pms.web.dto.request.CompleteTaskRequest;
 import com.contec.pms.web.dto.request.CreateTaskRequest;
 import com.contec.pms.web.dto.request.UpdateProgressRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,8 +29,8 @@ class TaskWorkflowIT extends AbstractIntegrationTest {
         manager = createManager("pm@contec.com");
         engineer = createEngineer("eng@contec.com");
         project = createProject("Riverside Tower", manager);
-        addMember(project, manager, ProjectMemberRole.MANAGER);
-        addMember(project, engineer, ProjectMemberRole.ENGINEER);
+        addMember(project, manager);
+        addMember(project, engineer);
     }
 
     @Test
@@ -49,36 +46,28 @@ class TaskWorkflowIT extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         long taskId = objectMapper.readTree(created).get("id").asLong();
-        long version = objectMapper.readTree(created).get("version").asLong();
 
         mockMvc.perform(post("/api/tasks/" + taskId + "/start")
                         .header(HttpHeaders.AUTHORIZATION, bearer(engineer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
 
-        version = currentVersion(taskId);
         mockMvc.perform(patch("/api/tasks/" + taskId + "/progress")
                         .header(HttpHeaders.AUTHORIZATION, bearer(engineer))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new UpdateProgressRequest(60, "framework up", version))))
+                        .content(json(new UpdateProgressRequest(60, "framework up", versionOf(taskId)))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.progress").value(60));
 
-        version = currentVersion(taskId);
         mockMvc.perform(post("/api/tasks/" + taskId + "/complete")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(engineer))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new CompleteTaskRequest("done", version))))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(engineer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.progress").value(100))
                 .andExpect(jsonPath("$.completedAt").isNotEmpty());
 
-        version = currentVersion(taskId);
         mockMvc.perform(post("/api/tasks/" + taskId + "/approve")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(manager))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new ApproveTaskRequest("looks good", version))))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(manager)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.approvedBy.email").value("pm@contec.com"));
@@ -92,9 +81,7 @@ class TaskWorkflowIT extends AbstractIntegrationTest {
         Task task = createTask(project, manager, engineer, TaskStatus.TODO, 0);
 
         mockMvc.perform(post("/api/tasks/" + task.getId() + "/complete")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(engineer))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new CompleteTaskRequest(null, task.getVersion()))))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(engineer)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
     }
@@ -104,9 +91,7 @@ class TaskWorkflowIT extends AbstractIntegrationTest {
         Task task = createTask(project, manager, engineer, TaskStatus.IN_PROGRESS, 30);
 
         mockMvc.perform(post("/api/tasks/" + task.getId() + "/approve")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(manager))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new ApproveTaskRequest(null, task.getVersion()))))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(manager)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
     }
@@ -139,14 +124,8 @@ class TaskWorkflowIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
 
         mockMvc.perform(post("/api/tasks/" + task.getId() + "/complete")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(engineer))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new CompleteTaskRequest("reworked", currentVersion(task.getId())))))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(engineer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
-    }
-
-    private long currentVersion(long taskId) {
-        return taskRepository.findById(taskId).orElseThrow().getVersion();
     }
 }

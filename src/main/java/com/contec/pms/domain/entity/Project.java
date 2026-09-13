@@ -13,7 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 
 import java.time.LocalDate;
 
@@ -47,10 +46,6 @@ public class Project extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by", nullable = false, updatable = false)
     private User createdBy;
-
-    @Version
-    @Column(name = "version", nullable = false)
-    private Long version;
 
     public Long getId() {
         return id;
@@ -110,9 +105,5 @@ public class Project extends AuditableEntity {
 
     public void setCreatedBy(User createdBy) {
         this.createdBy = createdBy;
-    }
-
-    public Long getVersion() {
-        return version;
     }
 }

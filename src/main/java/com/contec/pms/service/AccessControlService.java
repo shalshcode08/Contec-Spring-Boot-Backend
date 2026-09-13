@@ -1,8 +1,7 @@
 package com.contec.pms.service;
 
 import com.contec.pms.domain.entity.Project;
-import com.contec.pms.domain.entity.ProjectMember;
-import com.contec.pms.domain.enums.RoleName;
+import com.contec.pms.domain.enums.Role;
 import com.contec.pms.exception.ForbiddenOperationException;
 import com.contec.pms.exception.ResourceNotFoundException;
 import com.contec.pms.repository.ProjectMemberRepository;
@@ -11,9 +10,7 @@ import com.contec.pms.security.AppUserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
-// project-level authority comes from membership, not from the global role; ADMIN bypasses it
+// project access comes from membership, not from the global role alone; ADMIN bypasses it
 @Service
 @Transactional(readOnly = true)
 public class AccessControlService {
@@ -28,16 +25,16 @@ public class AccessControlService {
     }
 
     public boolean isAdmin(AppUserDetails principal) {
-        return principal.hasRole(RoleName.ADMIN);
+        return principal.hasRole(Role.ADMIN);
+    }
+
+    public boolean isMember(Long projectId, Long userId) {
+        return projectMemberRepository.existsByProjectIdAndUserId(projectId, userId);
     }
 
     public Project getProjectOrThrow(Long projectId) {
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
-    }
-
-    public Optional<ProjectMember> findMembership(Long projectId, Long userId) {
-        return projectMemberRepository.findByProjectIdAndUserId(projectId, userId);
     }
 
     public Project requireProjectAccess(AppUserDetails principal, Long projectId) {
@@ -47,12 +44,8 @@ public class AccessControlService {
     }
 
     public void requireProjectAccess(AppUserDetails principal, Project project) {
-        if (isAdmin(principal)) {
-            return;
-        }
-        if (findMembership(project.getId(), principal.getId()).isEmpty()) {
-            throw new ForbiddenOperationException(
-                    "You are not assigned to project " + project.getId());
+        if (!isAdmin(principal) && !isMember(project.getId(), principal.getId())) {
+            throw new ForbiddenOperationException("You are not assigned to project " + project.getId());
         }
     }
 
@@ -66,12 +59,9 @@ public class AccessControlService {
         if (isAdmin(principal)) {
             return;
         }
-        boolean manages = findMembership(project.getId(), principal.getId())
-                .map(ProjectMember::isManager)
-                .orElse(false);
-        if (!manages) {
+        if (!principal.hasRole(Role.PROJECT_MANAGER) || !isMember(project.getId(), principal.getId())) {
             throw new ForbiddenOperationException(
-                    "Only a project manager of project " + project.getId() + " may perform this operation");
+                    "Only a project manager assigned to project " + project.getId() + " may do this");
         }
     }
 }

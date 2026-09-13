@@ -1,10 +1,11 @@
 package com.contec.pms.web.controller;
 
+import com.contec.pms.domain.enums.TaskPriority;
+import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.security.AppUserDetails;
 import com.contec.pms.service.TaskService;
-import com.contec.pms.web.dto.request.ApproveTaskRequest;
 import com.contec.pms.web.dto.request.AssignTaskRequest;
-import com.contec.pms.web.dto.request.CompleteTaskRequest;
+import com.contec.pms.web.dto.request.CreateTaskRequest;
 import com.contec.pms.web.dto.request.RejectTaskRequest;
 import com.contec.pms.web.dto.request.UpdateProgressRequest;
 import com.contec.pms.web.dto.request.UpdateTaskRequest;
@@ -18,6 +19,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,10 +29,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/api")
 @Tag(name = "Tasks")
 public class TaskController {
 
@@ -40,75 +43,95 @@ public class TaskController {
         this.taskService = taskService;
     }
 
-    @GetMapping("/{taskId}")
+    @PostMapping("/projects/{projectId}/tasks")
+    @Operation(summary = "Create a task (administrators and the project's manager)")
+    public ResponseEntity<TaskResponse> create(@AuthenticationPrincipal AppUserDetails principal,
+                                               @PathVariable Long projectId,
+                                               @Valid @RequestBody CreateTaskRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(taskService.create(principal, projectId, request));
+    }
+
+    @GetMapping("/projects/{projectId}/tasks")
+    @Operation(summary = "List project tasks with paging, sorting and filtering")
+    public PagedResponse<TaskResponse> list(
+            @AuthenticationPrincipal AppUserDetails principal,
+            @PathVariable Long projectId,
+            @RequestParam(required = false) TaskStatus status,
+            @RequestParam(required = false) TaskPriority priority,
+            @RequestParam(required = false) Long assigneeId,
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return taskService.listProjectTasks(principal, projectId, status, priority, assigneeId, pageable);
+    }
+
+    @GetMapping("/tasks/{taskId}")
     @Operation(summary = "Get a task")
-    public ResponseEntity<TaskResponse> get(@AuthenticationPrincipal AppUserDetails principal,
-                                            @PathVariable Long taskId) {
-        return ResponseEntity.ok(taskService.get(principal, taskId));
+    public TaskResponse get(@AuthenticationPrincipal AppUserDetails principal,
+                            @PathVariable Long taskId) {
+        return taskService.get(principal, taskId);
     }
 
-    @PutMapping("/{taskId}")
+    @PutMapping("/tasks/{taskId}")
     @Operation(summary = "Update task details (project manager)")
-    public ResponseEntity<TaskResponse> update(@AuthenticationPrincipal AppUserDetails principal,
-                                               @PathVariable Long taskId,
-                                               @Valid @RequestBody UpdateTaskRequest request) {
-        return ResponseEntity.ok(taskService.update(principal, taskId, request));
+    public TaskResponse update(@AuthenticationPrincipal AppUserDetails principal,
+                               @PathVariable Long taskId,
+                               @Valid @RequestBody UpdateTaskRequest request) {
+        return taskService.update(principal, taskId, request);
     }
 
-    @PostMapping("/{taskId}/assign")
+    @PostMapping("/tasks/{taskId}/assign")
     @Operation(summary = "Assign the task to a site engineer on the project (project manager)")
-    public ResponseEntity<TaskResponse> assign(@AuthenticationPrincipal AppUserDetails principal,
-                                               @PathVariable Long taskId,
-                                               @Valid @RequestBody AssignTaskRequest request) {
-        return ResponseEntity.ok(taskService.assign(principal, taskId, request));
+    public TaskResponse assign(@AuthenticationPrincipal AppUserDetails principal,
+                               @PathVariable Long taskId,
+                               @Valid @RequestBody AssignTaskRequest request) {
+        return taskService.assign(principal, taskId, request);
     }
 
-    @PostMapping("/{taskId}/start")
+    @PostMapping("/tasks/{taskId}/start")
     @Operation(summary = "Move an assigned task to IN_PROGRESS (assigned engineer)")
-    public ResponseEntity<TaskResponse> start(@AuthenticationPrincipal AppUserDetails principal,
-                                              @PathVariable Long taskId) {
-        return ResponseEntity.ok(taskService.start(principal, taskId));
+    public TaskResponse start(@AuthenticationPrincipal AppUserDetails principal,
+                              @PathVariable Long taskId) {
+        return taskService.start(principal, taskId);
     }
 
-    @PatchMapping("/{taskId}/progress")
+    @PatchMapping("/tasks/{taskId}/progress")
     @Operation(summary = "Report progress between 0 and 100 (assigned engineer)")
-    public ResponseEntity<TaskResponse> updateProgress(@AuthenticationPrincipal AppUserDetails principal,
-                                                       @PathVariable Long taskId,
-                                                       @Valid @RequestBody UpdateProgressRequest request) {
-        return ResponseEntity.ok(taskService.updateProgress(principal, taskId, request));
+    public TaskResponse updateProgress(@AuthenticationPrincipal AppUserDetails principal,
+                                       @PathVariable Long taskId,
+                                       @Valid @RequestBody UpdateProgressRequest request) {
+        return taskService.updateProgress(principal, taskId, request);
     }
 
-    @PostMapping("/{taskId}/complete")
+    @PostMapping("/tasks/{taskId}/complete")
     @Operation(summary = "Mark the task completed (assigned engineer)")
-    public ResponseEntity<TaskResponse> complete(@AuthenticationPrincipal AppUserDetails principal,
-                                                 @PathVariable Long taskId,
-                                                 @Valid @RequestBody CompleteTaskRequest request) {
-        return ResponseEntity.ok(taskService.complete(principal, taskId, request));
+    public TaskResponse complete(@AuthenticationPrincipal AppUserDetails principal,
+                                 @PathVariable Long taskId) {
+        return taskService.complete(principal, taskId);
     }
 
-    @PostMapping("/{taskId}/approve")
+    @PostMapping("/tasks/{taskId}/approve")
     @Operation(summary = "Approve a completed task (project manager)")
-    public ResponseEntity<TaskResponse> approve(@AuthenticationPrincipal AppUserDetails principal,
-                                                @PathVariable Long taskId,
-                                                @Valid @RequestBody ApproveTaskRequest request) {
-        return ResponseEntity.ok(taskService.approve(principal, taskId, request));
+    public TaskResponse approve(@AuthenticationPrincipal AppUserDetails principal,
+                                @PathVariable Long taskId) {
+        return taskService.approve(principal, taskId);
     }
 
-    @PostMapping("/{taskId}/reject")
+    @PostMapping("/tasks/{taskId}/reject")
     @Operation(summary = "Reject a completed task with a reason (project manager)")
-    public ResponseEntity<TaskResponse> reject(@AuthenticationPrincipal AppUserDetails principal,
-                                               @PathVariable Long taskId,
-                                               @Valid @RequestBody RejectTaskRequest request) {
-        return ResponseEntity.ok(taskService.reject(principal, taskId, request));
+    public TaskResponse reject(@AuthenticationPrincipal AppUserDetails principal,
+                               @PathVariable Long taskId,
+                               @Valid @RequestBody RejectTaskRequest request) {
+        return taskService.reject(principal, taskId, request);
     }
 
-    @GetMapping("/{taskId}/activities")
+    @GetMapping("/tasks/{taskId}/activities")
     @Operation(summary = "Activity history: what happened, who did it and when")
-    public ResponseEntity<PagedResponse<TaskActivityResponse>> activities(
+    public PagedResponse<TaskActivityResponse> activities(
             @AuthenticationPrincipal AppUserDetails principal,
             @PathVariable Long taskId,
             @ParameterObject @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        return ResponseEntity.ok(taskService.listActivities(principal, taskId, pageable));
+        return taskService.listActivities(principal, taskId, pageable);
     }
 }

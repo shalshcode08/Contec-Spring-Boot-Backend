@@ -2,17 +2,14 @@ package com.contec.pms.support;
 
 import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.ProjectMember;
-import com.contec.pms.domain.entity.Role;
 import com.contec.pms.domain.entity.Task;
 import com.contec.pms.domain.entity.User;
-import com.contec.pms.domain.enums.ProjectMemberRole;
 import com.contec.pms.domain.enums.ProjectStatus;
-import com.contec.pms.domain.enums.RoleName;
+import com.contec.pms.domain.enums.Role;
 import com.contec.pms.domain.enums.TaskPriority;
 import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.repository.ProjectMemberRepository;
 import com.contec.pms.repository.ProjectRepository;
-import com.contec.pms.repository.RoleRepository;
 import com.contec.pms.repository.TaskActivityRepository;
 import com.contec.pms.repository.TaskRepository;
 import com.contec.pms.repository.UserRepository;
@@ -29,7 +26,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
-import java.util.Set;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -47,8 +43,6 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected UserRepository userRepository;
     @Autowired
-    protected RoleRepository roleRepository;
-    @Autowired
     protected ProjectRepository projectRepository;
     @Autowired
     protected ProjectMemberRepository projectMemberRepository;
@@ -61,7 +55,7 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected JwtService jwtService;
 
-    // tests are not transactional, so each one starts from a clean slate
+    // tests are not transactional, so each one starts from a clean database
     @BeforeEach
     void resetDatabase() {
         jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
@@ -69,35 +63,30 @@ public abstract class AbstractIntegrationTest {
         jdbcTemplate.execute("DELETE FROM tasks");
         jdbcTemplate.execute("DELETE FROM project_members");
         jdbcTemplate.execute("DELETE FROM projects");
-        jdbcTemplate.execute("DELETE FROM user_roles");
         jdbcTemplate.execute("DELETE FROM users");
         jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
     }
 
-    protected User createUser(String email, String fullName, RoleName... roles) {
-        Set<Role> roleEntities = new java.util.LinkedHashSet<>();
-        for (RoleName role : roles) {
-            roleEntities.add(roleRepository.findByName(role).orElseThrow());
-        }
+    protected User createUser(String email, String fullName, Role role) {
         User user = new User();
         user.setEmail(email);
         user.setFullName(fullName);
         user.setPasswordHash(passwordEncoder.encode(PASSWORD));
+        user.setRole(role);
         user.setActive(true);
-        user.setRoles(roleEntities);
         return userRepository.save(user);
     }
 
     protected User createAdmin(String email) {
-        return createUser(email, "Admin " + email, RoleName.ADMIN);
+        return createUser(email, "Admin", Role.ADMIN);
     }
 
     protected User createManager(String email) {
-        return createUser(email, "Manager " + email, RoleName.PROJECT_MANAGER);
+        return createUser(email, "Manager " + email, Role.PROJECT_MANAGER);
     }
 
     protected User createEngineer(String email) {
-        return createUser(email, "Engineer " + email, RoleName.SITE_ENGINEER);
+        return createUser(email, "Engineer " + email, Role.SITE_ENGINEER);
     }
 
     protected Project createProject(String name, User creator) {
@@ -112,8 +101,8 @@ public abstract class AbstractIntegrationTest {
         return projectRepository.save(project);
     }
 
-    protected ProjectMember addMember(Project project, User user, ProjectMemberRole role) {
-        return projectMemberRepository.save(new ProjectMember(project, user, role, user));
+    protected void addMember(Project project, User user) {
+        projectMemberRepository.save(new ProjectMember(project, user));
     }
 
     protected Task createTask(Project project, User creator, User assignee, TaskStatus status, int progress) {
@@ -130,12 +119,13 @@ public abstract class AbstractIntegrationTest {
         return taskRepository.save(task);
     }
 
-    protected String tokenFor(User user) {
-        return jwtService.generateToken(new AppUserDetails(userRepository.findById(user.getId()).orElseThrow()));
+    protected String bearer(User user) {
+        return "Bearer " + jwtService.generateToken(
+                new AppUserDetails(userRepository.findById(user.getId()).orElseThrow()));
     }
 
-    protected String bearer(User user) {
-        return "Bearer " + tokenFor(user);
+    protected long versionOf(long taskId) {
+        return taskRepository.findById(taskId).orElseThrow().getVersion();
     }
 
     protected String json(Object body) throws Exception {

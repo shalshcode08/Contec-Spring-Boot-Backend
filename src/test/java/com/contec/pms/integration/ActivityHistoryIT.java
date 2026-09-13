@@ -4,10 +4,8 @@ import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.TaskActivity;
 import com.contec.pms.domain.entity.User;
 import com.contec.pms.domain.enums.ActivityType;
-import com.contec.pms.domain.enums.ProjectMemberRole;
+import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.support.AbstractIntegrationTest;
-import com.contec.pms.web.dto.request.ApproveTaskRequest;
-import com.contec.pms.web.dto.request.CompleteTaskRequest;
 import com.contec.pms.web.dto.request.CreateTaskRequest;
 import com.contec.pms.web.dto.request.UpdateProgressRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,8 +33,8 @@ class ActivityHistoryIT extends AbstractIntegrationTest {
         manager = createManager("pm@contec.com");
         engineer = createEngineer("eng@contec.com");
         project = createProject("Riverside Tower", manager);
-        addMember(project, manager, ProjectMemberRole.MANAGER);
-        addMember(project, engineer, ProjectMemberRole.ENGINEER);
+        addMember(project, manager);
+        addMember(project, engineer);
     }
 
     @Test
@@ -54,22 +52,16 @@ class ActivityHistoryIT extends AbstractIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(engineer))).andExpect(status().isOk());
 
         mockMvc.perform(patch("/api/tasks/" + taskId + "/progress")
-                .header(HttpHeaders.AUTHORIZATION, bearer(engineer))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(new UpdateProgressRequest(70, "on track", version(taskId)))))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(engineer))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new UpdateProgressRequest(70, "on track", versionOf(taskId)))))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/tasks/" + taskId + "/complete")
-                .header(HttpHeaders.AUTHORIZATION, bearer(engineer))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(new CompleteTaskRequest("finished", version(taskId)))))
-                .andExpect(status().isOk());
+                .header(HttpHeaders.AUTHORIZATION, bearer(engineer))).andExpect(status().isOk());
 
         mockMvc.perform(post("/api/tasks/" + taskId + "/approve")
-                .header(HttpHeaders.AUTHORIZATION, bearer(manager))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(new ApproveTaskRequest("signed off", version(taskId)))))
-                .andExpect(status().isOk());
+                .header(HttpHeaders.AUTHORIZATION, bearer(manager))).andExpect(status().isOk());
 
         List<TaskActivity> activities = taskActivityRepository.findByTaskIdOrderByCreatedAtAscIdAsc(taskId);
         assertThat(activities).extracting(TaskActivity::getActivityType)
@@ -93,7 +85,7 @@ class ActivityHistoryIT extends AbstractIntegrationTest {
 
         TaskActivity approval = activities.get(5);
         assertThat(approval.getActor().getEmail()).isEqualTo("pm@contec.com");
-        assertThat(approval.getNewStatus().name()).isEqualTo("APPROVED");
+        assertThat(approval.getNewStatus()).isEqualTo(TaskStatus.APPROVED);
     }
 
     @Test
@@ -121,15 +113,10 @@ class ActivityHistoryIT extends AbstractIntegrationTest {
     @Test
     void outsiderCannotReadActivityHistory() throws Exception {
         User outsider = createEngineer("outsider@contec.com");
-        long taskId = createTask(project, manager, engineer,
-                com.contec.pms.domain.enums.TaskStatus.TODO, 0).getId();
+        long taskId = createTask(project, manager, engineer, TaskStatus.TODO, 0).getId();
 
         mockMvc.perform(get("/api/tasks/" + taskId + "/activities")
                         .header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
                 .andExpect(status().isForbidden());
-    }
-
-    private long version(long taskId) {
-        return taskRepository.findById(taskId).orElseThrow().getVersion();
     }
 }

@@ -1,7 +1,7 @@
 package com.contec.pms.repository;
 
 import com.contec.pms.domain.entity.User;
-import com.contec.pms.domain.enums.RoleName;
+import com.contec.pms.domain.enums.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,5 +16,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmailIgnoreCase(String email);
 
-    Page<User> findByRoles_Name(RoleName roleName, Pageable pageable);
+    Page<User> findByRole(Role role, Pageable pageable);
 }

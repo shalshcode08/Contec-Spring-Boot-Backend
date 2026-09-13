@@ -2,7 +2,6 @@ package com.contec.pms.integration;
 
 import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.User;
-import com.contec.pms.domain.enums.ProjectMemberRole;
 import com.contec.pms.domain.enums.ProjectStatus;
 import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.support.AbstractIntegrationTest;
@@ -39,9 +38,9 @@ class ProjectAccessIT extends AbstractIntegrationTest {
         projectA = createProject("Project A", managerA);
         projectB = createProject("Project B", managerB);
 
-        addMember(projectA, managerA, ProjectMemberRole.MANAGER);
-        addMember(projectA, engineerA, ProjectMemberRole.ENGINEER);
-        addMember(projectB, managerB, ProjectMemberRole.MANAGER);
+        addMember(projectA, managerA);
+        addMember(projectA, engineerA);
+        addMember(projectB, managerB);
     }
 
     @Test
@@ -89,7 +88,7 @@ class ProjectAccessIT extends AbstractIntegrationTest {
     @Test
     void managerCannotUpdateAnUnrelatedProject() throws Exception {
         UpdateProjectRequest request = new UpdateProjectRequest("Hijacked", "x", "y",
-                LocalDate.now(), LocalDate.now().plusMonths(2), ProjectStatus.ACTIVE, null);
+                LocalDate.now(), LocalDate.now().plusMonths(2), ProjectStatus.ACTIVE);
 
         mockMvc.perform(put("/api/projects/" + projectB.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearer(managerA))
@@ -99,13 +98,27 @@ class ProjectAccessIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void managerCanUpdateTheirOwnProject() throws Exception {
+        UpdateProjectRequest request = new UpdateProjectRequest("Project A renamed", "x", "y",
+                LocalDate.now(), LocalDate.now().plusMonths(2), ProjectStatus.ON_HOLD);
+
+        mockMvc.perform(put("/api/projects/" + projectA.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(managerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Project A renamed"))
+                .andExpect(jsonPath("$.status").value("ON_HOLD"));
+    }
+
+    @Test
     void engineerCannotAddMembers() throws Exception {
         User other = createEngineer("other@contec.com");
 
         mockMvc.perform(post("/api/projects/" + projectA.getId() + "/members")
                         .header(HttpHeaders.AUTHORIZATION, bearer(engineerA))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new AddProjectMemberRequest(other.getId(), ProjectMemberRole.ENGINEER))))
+                        .content(json(new AddProjectMemberRequest(other.getId()))))
                 .andExpect(status().isForbidden());
     }
 
@@ -122,7 +135,7 @@ class ProjectAccessIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void managerCreatingAProjectBecomesItsManager() throws Exception {
+    void managerCreatingAProjectBecomesAMember() throws Exception {
         CreateProjectRequest request = new CreateProjectRequest("Depot C", "desc", "site",
                 LocalDate.now(), LocalDate.now().plusMonths(3), ProjectStatus.PLANNED, null);
 
@@ -133,12 +146,12 @@ class ProjectAccessIT extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        Integer projectId = objectMapper.readTree(response).get("id").asInt();
+        long projectId = objectMapper.readTree(response).get("id").asLong();
         mockMvc.perform(get("/api/projects/" + projectId + "/members")
                         .header(HttpHeaders.AUTHORIZATION, bearer(managerA)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].projectRole").value("MANAGER"))
-                .andExpect(jsonPath("$[0].email").value("managerA@contec.com"));
+                .andExpect(jsonPath("$[0].email").value("managerA@contec.com"))
+                .andExpect(jsonPath("$[0].role").value("PROJECT_MANAGER"));
     }
 
     @Test

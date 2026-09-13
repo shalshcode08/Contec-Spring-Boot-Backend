@@ -1,28 +1,14 @@
-CREATE TABLE roles (
-    id   BIGINT      NOT NULL AUTO_INCREMENT,
-    name VARCHAR(50) NOT NULL,
-    CONSTRAINT pk_roles PRIMARY KEY (id),
-    CONSTRAINT uk_roles_name UNIQUE (name)
-) ENGINE = InnoDB;
-
 CREATE TABLE users (
     id            BIGINT       NOT NULL AUTO_INCREMENT,
     email         VARCHAR(180) NOT NULL,
     password_hash VARCHAR(100) NOT NULL,
     full_name     VARCHAR(150) NOT NULL,
+    role          VARCHAR(30)  NOT NULL,
     active        BOOLEAN      NOT NULL DEFAULT TRUE,
     created_at    DATETIME(6)  NOT NULL,
     updated_at    DATETIME(6)  NOT NULL,
     CONSTRAINT pk_users PRIMARY KEY (id),
     CONSTRAINT uk_users_email UNIQUE (email)
-) ENGINE = InnoDB;
-
-CREATE TABLE user_roles (
-    user_id BIGINT NOT NULL,
-    role_id BIGINT NOT NULL,
-    CONSTRAINT pk_user_roles PRIMARY KEY (user_id, role_id),
-    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles (id)
 ) ENGINE = InnoDB;
 
 CREATE TABLE projects (
@@ -36,27 +22,21 @@ CREATE TABLE projects (
     created_by               BIGINT       NOT NULL,
     created_at               DATETIME(6)  NOT NULL,
     updated_at               DATETIME(6)  NOT NULL,
-    version                  BIGINT       NOT NULL DEFAULT 0,
     CONSTRAINT pk_projects PRIMARY KEY (id),
     CONSTRAINT fk_projects_created_by FOREIGN KEY (created_by) REFERENCES users (id),
     CONSTRAINT ck_projects_dates CHECK (expected_completion_date >= start_date)
 ) ENGINE = InnoDB;
 
-CREATE INDEX ix_projects_status ON projects (status);
-
--- membership scopes every authorization decision
+-- membership decides project access; a project manager who is a member manages that project
 CREATE TABLE project_members (
-    id           BIGINT      NOT NULL AUTO_INCREMENT,
-    project_id   BIGINT      NOT NULL,
-    user_id      BIGINT      NOT NULL,
-    project_role VARCHAR(30) NOT NULL,
-    added_by     BIGINT      NULL,
-    added_at     DATETIME(6) NOT NULL,
+    id         BIGINT      NOT NULL AUTO_INCREMENT,
+    project_id BIGINT      NOT NULL,
+    user_id    BIGINT      NOT NULL,
+    added_at   DATETIME(6) NOT NULL,
     CONSTRAINT pk_project_members PRIMARY KEY (id),
     CONSTRAINT uk_project_members_project_user UNIQUE (project_id, user_id),
     CONSTRAINT fk_project_members_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
-    CONSTRAINT fk_project_members_user FOREIGN KEY (user_id) REFERENCES users (id),
-    CONSTRAINT fk_project_members_added_by FOREIGN KEY (added_by) REFERENCES users (id)
+    CONSTRAINT fk_project_members_user FOREIGN KEY (user_id) REFERENCES users (id)
 ) ENGINE = InnoDB;
 
 CREATE INDEX ix_project_members_user ON project_members (user_id);
@@ -91,7 +71,6 @@ CREATE TABLE tasks (
 ) ENGINE = InnoDB;
 
 CREATE INDEX ix_tasks_project_status ON tasks (project_id, status);
-CREATE INDEX ix_tasks_project_priority ON tasks (project_id, priority);
 CREATE INDEX ix_tasks_assignee ON tasks (assignee_id);
 
 CREATE TABLE task_activities (
@@ -110,4 +89,4 @@ CREATE TABLE task_activities (
     CONSTRAINT fk_task_activities_actor FOREIGN KEY (actor_id) REFERENCES users (id)
 ) ENGINE = InnoDB;
 
-CREATE INDEX ix_task_activities_task_created ON task_activities (task_id, created_at);
+CREATE INDEX ix_task_activities_task ON task_activities (task_id, created_at);

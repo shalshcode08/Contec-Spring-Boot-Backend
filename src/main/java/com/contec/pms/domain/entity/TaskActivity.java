@@ -64,10 +64,21 @@ public class TaskActivity {
     protected TaskActivity() {
     }
 
-    public TaskActivity(Task task, User actor, ActivityType activityType) {
+    public TaskActivity(Task task, User actor, ActivityType activityType, String detail) {
+        this(task, actor, activityType, null, null, null, null, detail);
+    }
+
+    public TaskActivity(Task task, User actor, ActivityType activityType,
+                        TaskStatus oldStatus, TaskStatus newStatus,
+                        Integer oldProgress, Integer newProgress, String detail) {
         this.task = task;
         this.actor = actor;
         this.activityType = activityType;
+        this.oldStatus = oldStatus;
+        this.newStatus = newStatus;
+        this.oldProgress = oldProgress;
+        this.newProgress = newProgress;
+        this.detail = detail;
     }
 
     public Long getId() {
@@ -90,12 +101,6 @@ public class TaskActivity {
         return oldStatus;
     }
 
-    public TaskActivity withStatusChange(TaskStatus from, TaskStatus to) {
-        this.oldStatus = from;
-        this.newStatus = to;
-        return this;
-    }
-
     public TaskStatus getNewStatus() {
         return newStatus;
     }
@@ -104,23 +109,12 @@ public class TaskActivity {
         return oldProgress;
     }
 
-    public TaskActivity withProgressChange(Integer from, Integer to) {
-        this.oldProgress = from;
-        this.newProgress = to;
-        return this;
-    }
-
     public Integer getNewProgress() {
         return newProgress;
     }
 
     public String getDetail() {
         return detail;
-    }
-
-    public TaskActivity withDetail(String detail) {
-        this.detail = detail;
-        return this;
     }
 
     public Instant getCreatedAt() {

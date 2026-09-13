@@ -2,9 +2,10 @@ package com.contec.pms.service;
 
 import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.Task;
+import com.contec.pms.domain.entity.TaskActivity;
 import com.contec.pms.domain.entity.User;
 import com.contec.pms.domain.enums.ActivityType;
-import com.contec.pms.domain.enums.RoleName;
+import com.contec.pms.domain.enums.Role;
 import com.contec.pms.domain.enums.TaskPriority;
 import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.exception.BusinessRuleException;
@@ -14,12 +15,9 @@ import com.contec.pms.exception.ResourceNotFoundException;
 import com.contec.pms.exception.StaleResourceException;
 import com.contec.pms.repository.TaskActivityRepository;
 import com.contec.pms.repository.TaskRepository;
-import com.contec.pms.repository.TaskSpecifications;
 import com.contec.pms.repository.UserRepository;
 import com.contec.pms.security.AppUserDetails;
-import com.contec.pms.web.dto.request.ApproveTaskRequest;
 import com.contec.pms.web.dto.request.AssignTaskRequest;
-import com.contec.pms.web.dto.request.CompleteTaskRequest;
 import com.contec.pms.web.dto.request.CreateTaskRequest;
 import com.contec.pms.web.dto.request.RejectTaskRequest;
 import com.contec.pms.web.dto.request.UpdateProgressRequest;
@@ -27,9 +25,7 @@ import com.contec.pms.web.dto.request.UpdateTaskRequest;
 import com.contec.pms.web.dto.response.PagedResponse;
 import com.contec.pms.web.dto.response.TaskActivityResponse;
 import com.contec.pms.web.dto.response.TaskResponse;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,18 +40,15 @@ public class TaskService {
     private final TaskActivityRepository taskActivityRepository;
     private final UserRepository userRepository;
     private final AccessControlService accessControl;
-    private final TaskActivityService activityService;
 
     public TaskService(TaskRepository taskRepository,
                        TaskActivityRepository taskActivityRepository,
                        UserRepository userRepository,
-                       AccessControlService accessControl,
-                       TaskActivityService activityService) {
+                       AccessControlService accessControl) {
         this.taskRepository = taskRepository;
         this.taskActivityRepository = taskActivityRepository;
         this.userRepository = userRepository;
         this.accessControl = accessControl;
-        this.activityService = activityService;
     }
 
     public TaskResponse get(AppUserDetails principal, Long taskId) {
@@ -65,19 +58,12 @@ public class TaskService {
     }
 
     public PagedResponse<TaskResponse> listProjectTasks(AppUserDetails principal, Long projectId,
-                                                        TaskStatus status, Long assigneeId,
-                                                        TaskPriority priority, String search,
-                                                        Pageable pageable) {
+                                                        TaskStatus status, TaskPriority priority,
+                                                        Long assigneeId, Pageable pageable) {
         accessControl.requireProjectAccess(principal, projectId);
-
-        Specification<Task> spec = Specification.where(TaskSpecifications.inProject(projectId))
-                .and(TaskSpecifications.hasStatus(status))
-                .and(TaskSpecifications.hasAssignee(assigneeId))
-                .and(TaskSpecifications.hasPriority(priority))
-                .and(TaskSpecifications.titleContains(search));
-
-        Page<Task> page = taskRepository.findAll(spec, pageable);
-        return PagedResponse.from(page, TaskResponse::from);
+        return PagedResponse.from(
+                taskRepository.findProjectTasks(projectId, status, priority, assigneeId, pageable),
+                TaskResponse::from);
     }
 
     public PagedResponse<TaskActivityResponse> listActivities(AppUserDetails principal, Long taskId,
@@ -91,7 +77,7 @@ public class TaskService {
     @Transactional
     public TaskResponse create(AppUserDetails principal, Long projectId, CreateTaskRequest request) {
         Project project = accessControl.requireProjectManagement(principal, projectId);
-        User actor = currentUser(principal);
+        User actor = getUser(principal.getId());
 
         Task task = new Task();
         task.setProject(project);
@@ -103,20 +89,14 @@ public class TaskService {
         task.setProgress(0);
         task.setCreatedBy(actor);
 
-        User assignee = null;
-        if (request.assigneeId() != null) {
-            assignee = validateAssignee(project, request.assigneeId());
-            task.setAssignee(assignee);
-        }
+        User assignee = request.assigneeId() == null ? null : validateAssignee(project, request.assigneeId());
+        task.setAssignee(assignee);
 
         Task saved = taskRepository.save(task);
-        activityService.record(saved, actor, ActivityType.TASK_CREATED,
-                null, TaskStatus.TODO, null, 0, "Task created");
+        log(saved, actor, ActivityType.TASK_CREATED, null, TaskStatus.TODO, null, 0, "Task created");
         if (assignee != null) {
-            activityService.record(saved, actor, ActivityType.TASK_ASSIGNED,
-                    "Assigned to " + assignee.getFullName());
+            log(saved, actor, ActivityType.TASK_ASSIGNED, "Assigned to " + assignee.getFullName());
         }
-
         return TaskResponse.from(saved);
     }
 
@@ -135,7 +115,7 @@ public class TaskService {
         task.setPriority(request.priority());
         task.setExpectedCompletionDate(request.expectedCompletionDate());
 
-        activityService.record(task, currentUser(principal), ActivityType.TASK_UPDATED, "Task details updated");
+        log(task, getUser(principal.getId()), ActivityType.TASK_UPDATED, "Task details updated");
         return TaskResponse.from(task);
     }
 
@@ -145,19 +125,15 @@ public class TaskService {
         accessControl.requireProjectManagement(principal, task.getProject());
         checkVersion(task, request.version());
 
-        if (task.getStatus() == TaskStatus.APPROVED || task.getStatus() == TaskStatus.COMPLETED) {
+        if (task.getStatus() == TaskStatus.COMPLETED || task.getStatus() == TaskStatus.APPROVED) {
             throw new InvalidStatusTransitionException(
                     "A task in status " + task.getStatus() + " can no longer be reassigned");
         }
 
         User assignee = validateAssignee(task.getProject(), request.assigneeId());
-        if (task.isAssignedTo(assignee.getId())) {
-            throw new BusinessRuleException("ALREADY_ASSIGNED",
-                    "Task " + taskId + " is already assigned to user " + assignee.getId());
-        }
-
         task.setAssignee(assignee);
-        activityService.record(task, currentUser(principal), ActivityType.TASK_ASSIGNED,
+
+        log(task, getUser(principal.getId()), ActivityType.TASK_ASSIGNED,
                 "Assigned to " + assignee.getFullName());
         return TaskResponse.from(task);
     }
@@ -171,9 +147,9 @@ public class TaskService {
         if (!from.canTransitionTo(TaskStatus.IN_PROGRESS)) {
             throw new InvalidStatusTransitionException(from, TaskStatus.IN_PROGRESS);
         }
-
         task.setStatus(TaskStatus.IN_PROGRESS);
-        activityService.record(task, currentUser(principal), ActivityType.TASK_STARTED,
+
+        log(task, getUser(principal.getId()), ActivityType.TASK_STARTED,
                 from, TaskStatus.IN_PROGRESS, task.getProgress(), task.getProgress(), "Work started");
         return TaskResponse.from(task);
     }
@@ -187,34 +163,29 @@ public class TaskService {
 
         TaskStatus from = task.getStatus();
         if (!from.allowsProgressUpdate()) {
-            throw new InvalidStatusTransitionException(
-                    "Progress cannot be changed while the task is " + from);
+            throw new InvalidStatusTransitionException("Progress cannot be changed while the task is " + from);
         }
 
-        User actor = currentUser(principal);
+        User actor = getUser(principal.getId());
         int oldProgress = task.getProgress();
-        int newProgress = request.progress();
 
         // reporting progress on a TODO or reworked task starts it
-        if (newProgress > 0 && from != TaskStatus.IN_PROGRESS) {
+        if (request.progress() > 0 && from != TaskStatus.IN_PROGRESS) {
             task.setStatus(TaskStatus.IN_PROGRESS);
-            activityService.record(task, actor, ActivityType.TASK_STARTED,
-                    from, TaskStatus.IN_PROGRESS, oldProgress, oldProgress,
-                    "Work started by reporting progress");
+            log(task, actor, ActivityType.TASK_STARTED, from, TaskStatus.IN_PROGRESS,
+                    oldProgress, oldProgress, "Work started by reporting progress");
         }
 
-        task.setProgress(newProgress);
-        activityService.record(task, actor, ActivityType.PROGRESS_UPDATED,
-                from, task.getStatus(), oldProgress, newProgress, request.note());
-
+        task.setProgress(request.progress());
+        log(task, actor, ActivityType.PROGRESS_UPDATED, from, task.getStatus(),
+                oldProgress, request.progress(), request.note());
         return TaskResponse.from(task);
     }
 
     @Transactional
-    public TaskResponse complete(AppUserDetails principal, Long taskId, CompleteTaskRequest request) {
+    public TaskResponse complete(AppUserDetails principal, Long taskId) {
         Task task = loadTask(taskId);
         requireAssignee(principal, task);
-        checkVersion(task, request.version());
 
         TaskStatus from = task.getStatus();
         if (!from.canTransitionTo(TaskStatus.COMPLETED)) {
@@ -226,33 +197,28 @@ public class TaskService {
         task.setProgress(100);
         task.setCompletedAt(Instant.now());
 
-        activityService.record(task, currentUser(principal), ActivityType.TASK_COMPLETED,
-                from, TaskStatus.COMPLETED, oldProgress, 100,
-                request.note() == null ? "Marked as completed" : request.note());
-
+        log(task, getUser(principal.getId()), ActivityType.TASK_COMPLETED,
+                from, TaskStatus.COMPLETED, oldProgress, 100, "Marked as completed");
         return TaskResponse.from(task);
     }
 
     @Transactional
-    public TaskResponse approve(AppUserDetails principal, Long taskId, ApproveTaskRequest request) {
+    public TaskResponse approve(AppUserDetails principal, Long taskId) {
         Task task = loadTask(taskId);
         accessControl.requireProjectManagement(principal, task.getProject());
-        checkVersion(task, request.version());
 
         TaskStatus from = task.getStatus();
         if (!from.canTransitionTo(TaskStatus.APPROVED)) {
             throw new InvalidStatusTransitionException(from, TaskStatus.APPROVED);
         }
 
-        User approver = currentUser(principal);
+        User approver = getUser(principal.getId());
         task.setStatus(TaskStatus.APPROVED);
         task.setApprovedBy(approver);
         task.setApprovedAt(Instant.now());
 
-        activityService.record(task, approver, ActivityType.TASK_APPROVED,
-                from, TaskStatus.APPROVED, task.getProgress(), task.getProgress(),
-                request.note() == null ? "Task approved" : request.note());
-
+        log(task, approver, ActivityType.TASK_APPROVED, from, TaskStatus.APPROVED,
+                task.getProgress(), task.getProgress(), "Task approved");
         return TaskResponse.from(task);
     }
 
@@ -260,25 +226,33 @@ public class TaskService {
     public TaskResponse reject(AppUserDetails principal, Long taskId, RejectTaskRequest request) {
         Task task = loadTask(taskId);
         accessControl.requireProjectManagement(principal, task.getProject());
-        checkVersion(task, request.version());
 
         TaskStatus from = task.getStatus();
         if (!from.canTransitionTo(TaskStatus.REJECTED)) {
             throw new InvalidStatusTransitionException(from, TaskStatus.REJECTED);
         }
 
-        User reviewer = currentUser(principal);
+        User reviewer = getUser(principal.getId());
+        String reason = request.reason().trim();
         task.setStatus(TaskStatus.REJECTED);
         task.setRejectedBy(reviewer);
         task.setRejectedAt(Instant.now());
-        task.setRejectionReason(request.reason().trim());
+        task.setRejectionReason(reason);
         task.setCompletedAt(null);
 
-        activityService.record(task, reviewer, ActivityType.TASK_REJECTED,
-                from, TaskStatus.REJECTED, task.getProgress(), task.getProgress(),
-                request.reason().trim());
-
+        log(task, reviewer, ActivityType.TASK_REJECTED, from, TaskStatus.REJECTED,
+                task.getProgress(), task.getProgress(), reason);
         return TaskResponse.from(task);
+    }
+
+    private void log(Task task, User actor, ActivityType type, String detail) {
+        taskActivityRepository.save(new TaskActivity(task, actor, type, detail));
+    }
+
+    private void log(Task task, User actor, ActivityType type, TaskStatus oldStatus, TaskStatus newStatus,
+                     Integer oldProgress, Integer newProgress, String detail) {
+        taskActivityRepository.save(new TaskActivity(task, actor, type, oldStatus, newStatus,
+                oldProgress, newProgress, detail));
     }
 
     private Task loadTask(Long taskId) {
@@ -286,9 +260,9 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Task", taskId));
     }
 
-    private User currentUser(AppUserDetails principal) {
-        return userRepository.findById(principal.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", principal.getId()));
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
     }
 
     // only the assigned engineer may report work; ADMIN is the explicitly permitted exception
@@ -297,28 +271,21 @@ public class TaskService {
         if (accessControl.isAdmin(principal)) {
             return;
         }
-        if (task.getAssignee() == null) {
-            throw new ForbiddenOperationException("Task " + task.getId() + " is not assigned to anyone yet");
-        }
         if (!task.isAssignedTo(principal.getId())) {
-            throw new ForbiddenOperationException(
-                    "Task " + task.getId() + " is assigned to another engineer");
+            throw new ForbiddenOperationException("Task " + task.getId() + " is not assigned to you");
         }
     }
 
     private User validateAssignee(Project project, Long assigneeId) {
-        User assignee = userRepository.findById(assigneeId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", assigneeId));
-
+        User assignee = getUser(assigneeId);
         if (!assignee.isActive()) {
-            throw new BusinessRuleException("INACTIVE_ASSIGNEE",
-                    "User " + assigneeId + " is not active");
+            throw new BusinessRuleException("INACTIVE_ASSIGNEE", "User " + assigneeId + " is not active");
         }
-        if (!assignee.hasRole(RoleName.SITE_ENGINEER)) {
+        if (!assignee.hasRole(Role.SITE_ENGINEER)) {
             throw new BusinessRuleException("INVALID_ASSIGNEE_ROLE",
-                    "Tasks can only be assigned to users with the SITE_ENGINEER role");
+                    "Tasks can only be assigned to a SITE_ENGINEER");
         }
-        if (accessControl.findMembership(project.getId(), assigneeId).isEmpty()) {
+        if (!accessControl.isMember(project.getId(), assigneeId)) {
             throw new BusinessRuleException("ASSIGNEE_NOT_A_MEMBER",
                     "User " + assigneeId + " is not a member of project " + project.getId());
         }
@@ -326,7 +293,7 @@ public class TaskService {
     }
 
     private void checkVersion(Task task, Long submittedVersion) {
-        if (submittedVersion != null && !Objects.equals(submittedVersion, task.getVersion())) {
+        if (!Objects.equals(submittedVersion, task.getVersion())) {
             throw new StaleResourceException("Task", submittedVersion, task.getVersion());
         }
     }

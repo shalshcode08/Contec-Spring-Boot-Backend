@@ -3,7 +3,6 @@ package com.contec.pms.integration;
 import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.Task;
 import com.contec.pms.domain.entity.User;
-import com.contec.pms.domain.enums.ProjectMemberRole;
 import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.support.AbstractIntegrationTest;
 import com.contec.pms.web.dto.request.UpdateProgressRequest;
@@ -31,9 +30,9 @@ class TaskProgressIT extends AbstractIntegrationTest {
         engineer = createEngineer("eng@contec.com");
         otherEngineer = createEngineer("eng2@contec.com");
         project = createProject("Riverside Tower", manager);
-        addMember(project, manager, ProjectMemberRole.MANAGER);
-        addMember(project, engineer, ProjectMemberRole.ENGINEER);
-        addMember(project, otherEngineer, ProjectMemberRole.ENGINEER);
+        addMember(project, manager);
+        addMember(project, engineer);
+        addMember(project, otherEngineer);
     }
 
     @ParameterizedTest

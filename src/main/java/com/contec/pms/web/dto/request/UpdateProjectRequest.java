@@ -13,6 +13,5 @@ public record UpdateProjectRequest(
         @Size(max = 255) String location,
         @NotNull LocalDate startDate,
         @NotNull LocalDate expectedCompletionDate,
-        @NotNull ProjectStatus status,
-        Long version) {
+        @NotNull ProjectStatus status) {
 }

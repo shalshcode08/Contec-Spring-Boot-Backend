@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,13 +30,13 @@ public class AuthController {
     @PostMapping("/login")
     @SecurityRequirements
     @Operation(summary = "Exchange email and password for a JWT access token")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+        return authService.login(request);
     }
 
     @GetMapping("/me")
     @Operation(summary = "Return the authenticated user")
-    public ResponseEntity<UserResponse> me(@AuthenticationPrincipal AppUserDetails principal) {
-        return ResponseEntity.ok(authService.currentUser(principal));
+    public UserResponse me(@AuthenticationPrincipal AppUserDetails principal) {
+        return authService.currentUser(principal);
     }
 }

@@ -3,7 +3,6 @@ package com.contec.pms.integration;
 import com.contec.pms.domain.entity.Project;
 import com.contec.pms.domain.entity.Task;
 import com.contec.pms.domain.entity.User;
-import com.contec.pms.domain.enums.ProjectMemberRole;
 import com.contec.pms.domain.enums.TaskPriority;
 import com.contec.pms.domain.enums.TaskStatus;
 import com.contec.pms.support.AbstractIntegrationTest;
@@ -29,15 +28,15 @@ class TaskListingIT extends AbstractIntegrationTest {
         engineerOne = createEngineer("eng1@contec.com");
         engineerTwo = createEngineer("eng2@contec.com");
         project = createProject("Riverside Tower", manager);
-        addMember(project, manager, ProjectMemberRole.MANAGER);
-        addMember(project, engineerOne, ProjectMemberRole.ENGINEER);
-        addMember(project, engineerTwo, ProjectMemberRole.ENGINEER);
+        addMember(project, manager);
+        addMember(project, engineerOne);
+        addMember(project, engineerTwo);
 
-        savePriority(createTask(project, manager, engineerOne, TaskStatus.TODO, 0), TaskPriority.LOW);
-        savePriority(createTask(project, manager, engineerOne, TaskStatus.IN_PROGRESS, 30), TaskPriority.HIGH);
-        savePriority(createTask(project, manager, engineerTwo, TaskStatus.IN_PROGRESS, 60), TaskPriority.HIGH);
-        savePriority(createTask(project, manager, engineerTwo, TaskStatus.COMPLETED, 100), TaskPriority.CRITICAL);
-        savePriority(createTask(project, manager, null, TaskStatus.TODO, 0), TaskPriority.MEDIUM);
+        withPriority(createTask(project, manager, engineerOne, TaskStatus.TODO, 0), TaskPriority.LOW);
+        withPriority(createTask(project, manager, engineerOne, TaskStatus.IN_PROGRESS, 30), TaskPriority.HIGH);
+        withPriority(createTask(project, manager, engineerTwo, TaskStatus.IN_PROGRESS, 60), TaskPriority.HIGH);
+        withPriority(createTask(project, manager, engineerTwo, TaskStatus.COMPLETED, 100), TaskPriority.CRITICAL);
+        withPriority(createTask(project, manager, null, TaskStatus.TODO, 0), TaskPriority.MEDIUM);
     }
 
     @Test
@@ -128,7 +127,7 @@ class TaskListingIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(5));
     }
 
-    private void savePriority(Task task, TaskPriority priority) {
+    private void withPriority(Task task, TaskPriority priority) {
         task.setPriority(priority);
         taskRepository.save(task);
     }

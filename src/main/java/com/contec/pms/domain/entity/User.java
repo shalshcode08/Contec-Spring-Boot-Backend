@@ -1,20 +1,15 @@
 package com.contec.pms.domain.entity;
 
 import com.contec.pms.common.AuditableEntity;
-import com.contec.pms.domain.enums.RoleName;
+import com.contec.pms.domain.enums.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
-
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -33,15 +28,12 @@ public class User extends AuditableEntity {
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 30)
+    private Role role;
+
     @Column(name = "active", nullable = false)
     private boolean active = true;
-
-    // eager: roles are needed on every authorization check
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new LinkedHashSet<>();
 
     public Long getId() {
         return id;
@@ -71,6 +63,14 @@ public class User extends AuditableEntity {
         this.fullName = fullName;
     }
 
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
     public boolean isActive() {
         return active;
     }
@@ -79,21 +79,7 @@ public class User extends AuditableEntity {
         this.active = active;
     }
 
-    public Set<Role> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(Set<Role> roles) {
-        this.roles = roles;
-    }
-
-    public boolean hasRole(RoleName roleName) {
-        return roles.stream().anyMatch(role -> role.getName() == roleName);
-    }
-
-    public Set<RoleName> getRoleNames() {
-        Set<RoleName> names = new LinkedHashSet<>();
-        roles.forEach(role -> names.add(role.getName()));
-        return names;
+    public boolean hasRole(Role expected) {
+        return role == expected;
     }
 }

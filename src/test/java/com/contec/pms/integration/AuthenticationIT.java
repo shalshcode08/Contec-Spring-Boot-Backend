@@ -25,7 +25,7 @@ class AuthenticationIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.user.email").value("pm@contec.com"))
-                .andExpect(jsonPath("$.user.roles[0]").value("PROJECT_MANAGER"));
+                .andExpect(jsonPath("$.user.role").value("PROJECT_MANAGER"));
     }
 
     @Test
