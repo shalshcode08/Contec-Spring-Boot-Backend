@@ -1,7 +1,3 @@
--- ---------------------------------------------------------------------------
--- Contec PMS baseline schema
--- ---------------------------------------------------------------------------
-
 CREATE TABLE roles (
     id   BIGINT      NOT NULL AUTO_INCREMENT,
     name VARCHAR(50) NOT NULL,
@@ -48,8 +44,7 @@ CREATE TABLE projects (
 
 CREATE INDEX ix_projects_status ON projects (status);
 
--- Project membership is what scopes every authorization decision: a user can only
--- reach a project they are a member of, and only manage one where they are MANAGER.
+-- membership scopes every authorization decision
 CREATE TABLE project_members (
     id           BIGINT      NOT NULL AUTO_INCREMENT,
     project_id   BIGINT      NOT NULL,

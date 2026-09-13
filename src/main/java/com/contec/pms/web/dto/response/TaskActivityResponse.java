@@ -6,7 +6,6 @@ import com.contec.pms.domain.enums.TaskStatus;
 
 import java.time.Instant;
 
-/** What happened, who did it, and when. */
 public record TaskActivityResponse(
         Long id,
         Long taskId,

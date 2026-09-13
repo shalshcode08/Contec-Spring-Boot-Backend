@@ -5,7 +5,6 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 import java.util.function.Function;
 
-/** Stable pagination envelope, so responses do not leak Spring's Page internals. */
 public record PagedResponse<T>(
         List<T> content,
         int page,

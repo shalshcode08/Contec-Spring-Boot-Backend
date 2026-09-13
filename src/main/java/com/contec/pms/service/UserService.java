@@ -69,9 +69,4 @@ public class UserService {
                 : userRepository.findByRoles_Name(role, pageable);
         return PagedResponse.from(page, UserResponse::from);
     }
-
-    public User getEntity(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
-    }
 }

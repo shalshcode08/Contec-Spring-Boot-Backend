@@ -21,10 +21,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Centralised exception handling: every error leaves the application as an
- * {@link ApiError} with an appropriate status code.
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -78,7 +74,7 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Authentication failed", request, null);
     }
 
-    /** Raised by Hibernate when a concurrent write bumped the version first. */
+    // raised by Hibernate when a concurrent write bumped the version first
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ResponseEntity<ApiError> handleOptimisticLocking(OptimisticLockingFailureException ex,
                                                             HttpServletRequest request) {

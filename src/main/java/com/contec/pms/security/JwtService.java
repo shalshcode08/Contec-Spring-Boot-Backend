@@ -17,7 +17,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-/** Issues and verifies the HS256 access tokens used by the API. */
 @Service
 public class JwtService {
 
@@ -56,7 +55,7 @@ public class JwtService {
                 .compact();
     }
 
-    /** Returns the token's claims, or empty when the token is invalid or expired. */
+    // empty when the token is missing, tampered with or expired
     public Optional<Claims> parse(String token) {
         try {
             Claims claims = Jwts.parser()

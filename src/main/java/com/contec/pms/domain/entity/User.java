@@ -36,7 +36,7 @@ public class User extends AuditableEntity {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
-    // Roles are few and always needed for authorization, so they are fetched eagerly.
+    // eager: roles are needed on every authorization check
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),

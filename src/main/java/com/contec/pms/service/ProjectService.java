@@ -46,10 +46,6 @@ public class ProjectService {
         this.accessControl = accessControl;
     }
 
-    /**
-     * Creates a project. A project manager who creates a project becomes its
-     * MANAGER; an administrator may nominate one with {@code managerId}.
-     */
     @Transactional
     public ProjectResponse create(AppUserDetails principal, CreateProjectRequest request) {
         validateDates(request.startDate(), request.expectedCompletionDate());
@@ -67,6 +63,7 @@ public class ProjectService {
         project.setCreatedBy(creator);
         Project saved = projectRepository.save(project);
 
+        // a manager who creates a project manages it; an admin may nominate one
         if (principal.hasRole(RoleName.PROJECT_MANAGER)) {
             projectMemberRepository.save(
                     new ProjectMember(saved, creator, ProjectMemberRole.MANAGER, creator));
@@ -106,7 +103,6 @@ public class ProjectService {
         return ProjectResponse.from(accessControl.requireProjectAccess(principal, projectId));
     }
 
-    /** Administrators see every project; everyone else sees only their memberships. */
     public PagedResponse<ProjectResponse> list(AppUserDetails principal, ProjectStatus status,
                                                String search, Pageable pageable) {
         Specification<Project> spec = Specification.where(ProjectSpecifications.hasStatus(status))

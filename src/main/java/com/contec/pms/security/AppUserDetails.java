@@ -10,7 +10,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-/** Authenticated principal; carries the user id so services never re-query by email. */
 public class AppUserDetails implements UserDetails {
 
     private final Long id;

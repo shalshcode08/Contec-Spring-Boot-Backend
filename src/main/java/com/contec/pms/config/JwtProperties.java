@@ -5,7 +5,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtProperties {
 
-    /** HMAC-SHA signing secret; must be at least 32 bytes. */
     private String secret;
 
     private long expirationMinutes = 60;

@@ -19,7 +19,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
 
-/** Join between a user and a project, carrying the user's role on that project. */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "project_members",

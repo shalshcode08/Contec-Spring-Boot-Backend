@@ -36,11 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Objects;
 
-/**
- * Task lifecycle. Every mutating method is transactional so that the task change
- * and its activity record commit together, and every one of them checks both the
- * caller's authority and the submitted optimistic-lock version.
- */
 @Service
 @Transactional(readOnly = true)
 public class TaskService {
@@ -62,8 +57,6 @@ public class TaskService {
         this.accessControl = accessControl;
         this.activityService = activityService;
     }
-
-    // ---------------------------------------------------------------- queries
 
     public TaskResponse get(AppUserDetails principal, Long taskId) {
         Task task = loadTask(taskId);
@@ -94,8 +87,6 @@ public class TaskService {
         return PagedResponse.from(taskActivityRepository.findByTaskId(taskId, pageable),
                 TaskActivityResponse::from);
     }
-
-    // --------------------------------------------------------------- commands
 
     @Transactional
     public TaskResponse create(AppUserDetails principal, Long projectId, CreateTaskRequest request) {
@@ -171,7 +162,6 @@ public class TaskService {
         return TaskResponse.from(task);
     }
 
-    /** Explicit TODO/REJECTED → IN_PROGRESS move by the assigned engineer. */
     @Transactional
     public TaskResponse start(AppUserDetails principal, Long taskId) {
         Task task = loadTask(taskId);
@@ -188,10 +178,6 @@ public class TaskService {
         return TaskResponse.from(task);
     }
 
-    /**
-     * Progress update by the assigned engineer. Reporting any progress on a task
-     * that has not been started (or was sent back for rework) starts it.
-     */
     @Transactional
     public TaskResponse updateProgress(AppUserDetails principal, Long taskId,
                                        UpdateProgressRequest request) {
@@ -209,6 +195,7 @@ public class TaskService {
         int oldProgress = task.getProgress();
         int newProgress = request.progress();
 
+        // reporting progress on a TODO or reworked task starts it
         if (newProgress > 0 && from != TaskStatus.IN_PROGRESS) {
             task.setStatus(TaskStatus.IN_PROGRESS);
             activityService.record(task, actor, ActivityType.TASK_STARTED,
@@ -294,8 +281,6 @@ public class TaskService {
         return TaskResponse.from(task);
     }
 
-    // ---------------------------------------------------------------- helpers
-
     private Task loadTask(Long taskId) {
         return taskRepository.findWithDetailsById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task", taskId));
@@ -306,10 +291,7 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", principal.getId()));
     }
 
-    /**
-     * Only the engineer the task is assigned to may report work on it. Administrators
-     * are allowed through as the "explicitly permitted" case.
-     */
+    // only the assigned engineer may report work; ADMIN is the explicitly permitted exception
     private void requireAssignee(AppUserDetails principal, Task task) {
         accessControl.requireProjectAccess(principal, task.getProject());
         if (accessControl.isAdmin(principal)) {
@@ -324,7 +306,6 @@ public class TaskService {
         }
     }
 
-    /** The assignee must be an active site engineer who belongs to the project. */
     private User validateAssignee(Project project, Long assigneeId) {
         User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", assigneeId));

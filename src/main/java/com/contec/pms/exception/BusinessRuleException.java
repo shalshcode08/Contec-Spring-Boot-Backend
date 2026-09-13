@@ -2,7 +2,6 @@ package com.contec.pms.exception;
 
 import org.springframework.http.HttpStatus;
 
-/** A syntactically valid request that breaks a domain rule. */
 public class BusinessRuleException extends ApiException {
 
     public BusinessRuleException(String message) {

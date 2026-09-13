@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.Instant;
 
-/** Turns "no or bad credentials" into the same JSON error shape as the controllers. */
 @Component
 public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 

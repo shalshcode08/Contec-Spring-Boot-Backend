@@ -5,15 +5,6 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Task lifecycle and the single source of truth for which transitions are legal.
- *
- * <pre>
- *   TODO ──▶ IN_PROGRESS ──▶ COMPLETED ──▶ APPROVED (terminal)
- *                 ▲                └────▶ REJECTED
- *                 └───────────────────────────┘   (rework)
- * </pre>
- */
 public enum TaskStatus {
     TODO,
     IN_PROGRESS,
@@ -21,6 +12,7 @@ public enum TaskStatus {
     APPROVED,
     REJECTED;
 
+    // TODO -> IN_PROGRESS -> COMPLETED -> APPROVED (terminal) or REJECTED -> IN_PROGRESS (rework)
     private static final Map<TaskStatus, Set<TaskStatus>> ALLOWED = Map.of(
             TODO, EnumSet.of(IN_PROGRESS),
             IN_PROGRESS, EnumSet.of(COMPLETED),
@@ -36,7 +28,6 @@ public enum TaskStatus {
         return Collections.unmodifiableSet(ALLOWED.get(this));
     }
 
-    /** Statuses in which an engineer may still move the progress figure. */
     public boolean allowsProgressUpdate() {
         return this == TODO || this == IN_PROGRESS || this == REJECTED;
     }

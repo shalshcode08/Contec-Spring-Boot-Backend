@@ -5,7 +5,6 @@ import com.contec.pms.domain.enums.TaskPriority;
 import com.contec.pms.domain.enums.TaskStatus;
 import org.springframework.data.jpa.domain.Specification;
 
-/** Composable filters for the task listing endpoint. */
 public final class TaskSpecifications {
 
     private TaskSpecifications() {

@@ -1,11 +1,5 @@
 #!/bin/sh
-# ----------------------------------------------------------------------------
-# Maven wrapper (script-only distribution).
-#
-# Downloads the Maven distribution declared in .mvn/wrapper/maven-wrapper.properties
-# into ~/.m2/wrapper/dists on first use, then delegates to it. No jar is committed
-# to the repository and no global Maven installation is required.
-# ----------------------------------------------------------------------------
+# Maven wrapper: downloads the distribution in .mvn/wrapper/maven-wrapper.properties on first use.
 set -e
 
 script_dir=$(cd -- "$(dirname -- "$0")" >/dev/null 2>&1 && pwd)
@@ -50,7 +44,6 @@ if [ ! -x "$mvn_cmd" ]; then
     *)        echo "mvnw: unsupported archive type: $archive" >&2; exit 1 ;;
   esac
 
-  # The archive contains a single top-level directory; move its contents into place.
   extracted=$(find "$tmp_dir" -maxdepth 1 -mindepth 1 -type d | head -n 1)
   rm -rf "$maven_home"
   mkdir -p "$(dirname "$maven_home")"

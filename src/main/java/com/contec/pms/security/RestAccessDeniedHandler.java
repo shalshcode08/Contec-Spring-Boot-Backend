@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.Instant;
 
-/** Renders filter-level authorization failures in the standard error shape. */
 @Component
 public class RestAccessDeniedHandler implements AccessDeniedHandler {
 

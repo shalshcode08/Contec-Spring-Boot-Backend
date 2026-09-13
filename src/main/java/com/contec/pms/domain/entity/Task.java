@@ -79,10 +79,7 @@ public class Task extends AuditableEntity {
     @JoinColumn(name = "created_by", nullable = false, updatable = false)
     private User createdBy;
 
-    /**
-     * Optimistic lock. Clients echo this value back on every mutating call; a
-     * mismatch is reported as 409 instead of silently overwriting newer changes.
-     */
+    // optimistic lock; clients echo it back on mutating calls
     @Version
     @Column(name = "version", nullable = false)
     private Long version;

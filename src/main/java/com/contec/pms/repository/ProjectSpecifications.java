@@ -16,7 +16,7 @@ public final class ProjectSpecifications {
         return status == null ? null : (root, query, cb) -> cb.equal(root.get("status"), status);
     }
 
-    /** Restricts the result to projects the given user is a member of. */
+    // restricts results to projects the user belongs to
     public static Specification<Project> memberOf(Long userId) {
         return (root, query, cb) -> {
             Subquery<Long> membership = query.subquery(Long.class);

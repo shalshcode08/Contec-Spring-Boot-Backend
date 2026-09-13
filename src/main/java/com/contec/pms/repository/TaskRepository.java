@@ -16,7 +16,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     @EntityGraph(attributePaths = {"project", "assignee", "createdBy"})
     Optional<Task> findWithDetailsById(Long id);
 
-    /** Used to stop a member being removed while they still owe work on the project. */
     long countByProjectIdAndAssigneeIdAndStatusIn(Long projectId, Long assigneeId,
                                                   Collection<TaskStatus> statuses);
 }

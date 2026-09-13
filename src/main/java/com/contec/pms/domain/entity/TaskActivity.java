@@ -19,10 +19,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
 
-/**
- * Append-only record of something that happened to a task: what happened,
- * who did it, and when.
- */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "task_activities")

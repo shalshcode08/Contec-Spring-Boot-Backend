@@ -2,10 +2,6 @@ package com.contec.pms.exception;
 
 import org.springframework.http.HttpStatus;
 
-/**
- * Base class for errors that map directly onto an HTTP response. Every subclass
- * carries a stable machine-readable {@code code} alongside the status.
- */
 public abstract class ApiException extends RuntimeException {
 
     private final HttpStatus status;

@@ -15,7 +15,8 @@ public interface TaskActivityRepository extends JpaRepository<TaskActivity, Long
     @EntityGraph(attributePaths = "actor")
     Page<TaskActivity> findByTaskId(Long taskId, Pageable pageable);
 
-    List<TaskActivity> findByTaskIdOrderByCreatedAtAsc(Long taskId);
+    @EntityGraph(attributePaths = "actor")
+    List<TaskActivity> findByTaskIdOrderByCreatedAtAscIdAsc(Long taskId);
 
     long countByTaskId(Long taskId);
 }

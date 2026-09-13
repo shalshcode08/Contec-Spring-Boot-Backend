@@ -11,6 +11,5 @@ public record CreateTaskRequest(
         @Size(max = 5000) String description,
         TaskPriority priority,
         LocalDate expectedCompletionDate,
-        /** Optional: assign at creation time. Must be a SITE_ENGINEER on this project. */
         Long assigneeId) {
 }

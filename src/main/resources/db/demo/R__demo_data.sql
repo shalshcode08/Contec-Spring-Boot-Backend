@@ -1,11 +1,4 @@
--- ---------------------------------------------------------------------------
--- Demo data. Only loaded when the application runs with the `demo` profile,
--- which adds classpath:db/demo to the Flyway locations.
---
--- Every demo user has the password: Password@123
--- This script is repeatable and safe to re-run.
--- ---------------------------------------------------------------------------
-
+-- demo profile only; every demo user has the password Password@123
 SET @pwd = '$2y$10$XqnLkDhljuNkQOYoLXpMauUZhgBAW6KI9zSaHY9ImmUBqaxotix6u';
 
 INSERT IGNORE INTO users (email, password_hash, full_name, active, created_at, updated_at) VALUES
@@ -27,8 +20,6 @@ FROM users u
          JOIN roles r ON r.name = 'SITE_ENGINEER'
 WHERE u.email IN ('sam.eng@contec.com', 'riley.eng@contec.com', 'taylor.eng@contec.com');
 
--- Projects -------------------------------------------------------------------
-
 INSERT INTO projects (name, description, location, start_date, expected_completion_date,
                       status, created_by, created_at, updated_at, version)
 SELECT 'Riverside Tower', 'Twenty-storey mixed-use tower on the east bank.', 'Riverside, Block C',
@@ -45,8 +36,6 @@ FROM users u
 WHERE u.email = 'admin@contec.com'
   AND NOT EXISTS (SELECT 1 FROM projects p WHERE p.name = 'Metro Depot Expansion');
 
--- Membership: Alex manages Riverside Tower (Sam, Riley),
---             Jordan manages Metro Depot Expansion (Taylor).
 INSERT IGNORE INTO project_members (project_id, user_id, project_role, added_by, added_at)
 SELECT p.id, u.id, 'MANAGER', a.id, UTC_TIMESTAMP(6)
 FROM projects p
@@ -74,8 +63,6 @@ FROM projects p
          JOIN users u ON u.email = 'taylor.eng@contec.com'
          JOIN users a ON a.email = 'admin@contec.com'
 WHERE p.name = 'Metro Depot Expansion';
-
--- Tasks ----------------------------------------------------------------------
 
 INSERT INTO tasks (project_id, title, description, assignee_id, status, priority, progress,
                    expected_completion_date, created_by, created_at, updated_at, version)

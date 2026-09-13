@@ -10,11 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Writes the task audit trail. Every {@code record} call runs inside the caller's
- * transaction (MANDATORY), so an activity row can never be committed without the
- * state change that produced it — and vice versa.
- */
+// MANDATORY: an activity row can never commit without the state change that produced it
 @Service
 public class TaskActivityService {
 

@@ -14,6 +14,5 @@ public record UpdateProjectRequest(
         @NotNull LocalDate startDate,
         @NotNull LocalDate expectedCompletionDate,
         @NotNull ProjectStatus status,
-        /** Optimistic lock; checked when supplied. */
         Long version) {
 }

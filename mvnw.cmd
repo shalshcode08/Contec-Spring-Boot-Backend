@@ -1,9 +1,4 @@
-@REM ---------------------------------------------------------------------------
-@REM Maven wrapper (script-only distribution) for Windows.
-@REM Downloads the Maven distribution declared in
-@REM .mvn\wrapper\maven-wrapper.properties into %USERPROFILE%\.m2\wrapper\dists
-@REM on first use, then delegates to it.
-@REM ---------------------------------------------------------------------------
+@REM Maven wrapper: downloads the distribution in .mvn\wrapper\maven-wrapper.properties on first use.
 @echo off
 setlocal enabledelayedexpansion
 

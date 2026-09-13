@@ -14,6 +14,5 @@ public record CreateProjectRequest(
         @NotNull LocalDate startDate,
         @NotNull LocalDate expectedCompletionDate,
         ProjectStatus status,
-        /** Optional: the project manager to install as the project's MANAGER member. */
         Long managerId) {
 }

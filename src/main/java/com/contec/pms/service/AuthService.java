@@ -30,11 +30,6 @@ public class AuthService {
         this.userRepository = userRepository;
     }
 
-    /**
-     * Verifies the credentials and issues an access token. Any failure surfaces as
-     * an {@link org.springframework.security.core.AuthenticationException}, which the
-     * exception handler renders as 401 — deliberately without saying which half was wrong.
-     */
     public LoginResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));

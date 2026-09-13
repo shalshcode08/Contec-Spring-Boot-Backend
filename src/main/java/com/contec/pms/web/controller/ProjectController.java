@@ -83,8 +83,6 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.list(principal, status, search, pageable));
     }
 
-    // ------------------------------------------------------------- membership
-
     @PostMapping("/{projectId}/members")
     @Operation(summary = "Assign a user to the project")
     public ResponseEntity<ProjectMemberResponse> addMember(

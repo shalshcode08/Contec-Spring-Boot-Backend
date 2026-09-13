@@ -13,13 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-/**
- * The single place that answers "may this user touch this project?".
- *
- * <p>Global roles alone grant nothing at project level: a project manager may only
- * manage projects where they are a member with {@code MANAGER}, and an engineer may
- * only see projects they belong to. Administrators bypass membership.
- */
+// project-level authority comes from membership, not from the global role; ADMIN bypasses it
 @Service
 @Transactional(readOnly = true)
 public class AccessControlService {
@@ -46,7 +40,6 @@ public class AccessControlService {
         return projectMemberRepository.findByProjectIdAndUserId(projectId, userId);
     }
 
-    /** The caller must be an administrator or a member of the project. */
     public Project requireProjectAccess(AppUserDetails principal, Long projectId) {
         Project project = getProjectOrThrow(projectId);
         requireProjectAccess(principal, project);
@@ -63,7 +56,6 @@ public class AccessControlService {
         }
     }
 
-    /** The caller must be an administrator or the project's MANAGER. */
     public Project requireProjectManagement(AppUserDetails principal, Long projectId) {
         Project project = getProjectOrThrow(projectId);
         requireProjectManagement(principal, project);
@@ -81,10 +73,5 @@ public class AccessControlService {
             throw new ForbiddenOperationException(
                     "Only a project manager of project " + project.getId() + " may perform this operation");
         }
-    }
-
-    public boolean isProjectManager(AppUserDetails principal, Long projectId) {
-        return isAdmin(principal)
-                || findMembership(projectId, principal.getId()).map(ProjectMember::isManager).orElse(false);
     }
 }

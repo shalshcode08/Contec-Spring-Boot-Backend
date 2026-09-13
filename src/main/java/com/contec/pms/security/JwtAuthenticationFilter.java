@@ -15,11 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * Reads the {@code Authorization: Bearer <token>} header and, when the token is
- * valid, puts the corresponding user into the security context. Invalid tokens
- * are ignored here; the entry point turns the missing authentication into 401.
- */
+// invalid tokens are ignored here; the entry point turns missing authentication into 401
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

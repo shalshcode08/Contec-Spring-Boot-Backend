@@ -92,10 +92,7 @@ public class ProjectMemberService {
         projectMemberRepository.delete(member);
     }
 
-    /**
-     * A project MANAGER must hold the PROJECT_MANAGER role and an ENGINEER the
-     * SITE_ENGINEER role, so project authority can never exceed the global role.
-     */
+    // project authority may never exceed the user's global role
     private void requireMatchingGlobalRole(User user, ProjectMemberRole projectRole) {
         RoleName required = projectRole == ProjectMemberRole.MANAGER
                 ? RoleName.PROJECT_MANAGER

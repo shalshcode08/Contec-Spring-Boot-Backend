@@ -2,7 +2,6 @@ package com.contec.pms.exception;
 
 import org.springframework.http.HttpStatus;
 
-/** The client's {@code version} is behind the stored one — refuse to overwrite. */
 public class StaleResourceException extends ApiException {
 
     public StaleResourceException(String resource, Long expected, Long actual) {
